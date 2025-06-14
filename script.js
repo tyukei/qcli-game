@@ -17,7 +17,7 @@ let gameState = {
     currentStage: 'haiku'
 };
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 // 音数カウント関数（ひらがな・カタカナ対応）
 function countMora(text) {
@@ -36,6 +36,7 @@ function countMora(text) {
             count++;
         }
     }
+    console.log(`Counted mora in "${text}": ${count}`);
     
     return count;
 }
@@ -82,6 +83,7 @@ function backToStageSelect() {
 }
 
 // Gemini APIを使用してテキスト生成
+// Gemini APIを使用してテキスト生成
 async function generateTextWithGemini() {
     if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
         console.log('API key not configured, using fallback');
@@ -89,41 +91,42 @@ async function generateTextWithGemini() {
     }
 
     try {
-        const shouldBe575 = Math.random() < 0.4;
+        const shouldBe575 = Math.random() < 0.6;
+        console.log('Should be 575:', shouldBe575);
         
         let prompt;
         if (gameState.currentStage === 'haiku') {
             // 俳句ステージ
             if (shouldBe575) {
-                prompt = `日本語で5-7-5の音律の俳句を1つ作成してください。季語を含めて、自然や日常の美しい瞬間を表現してください。改行で3行に分けて出力してください。例：
+                prompt = `以下の例のように、5-7-5の音律の俳句を1つだけ作成してください。季語を含めて、自然や日常の美しい瞬間を表現してください。3行で出力し、余計な説明や挨拶は一切含めないでください。俳句のみを出力してください。
+
+例：
 桜散り
 風に舞い踊る
-花びらよ`;
+花びらよ
+
+上記の形式で俳句のみを出力してください。余計な説明や挨拶は一切含めないでください：`;
             } else {
                 const patterns = [
-                    '日本語で5-7-7の音律の短詩を作成してください。季語を含めて改行で3行に分けて出力してください。',
-                    '日本語で7-5-5の音律の短詩を作成してください。季語を含めて改行で3行に分けて出力してください。',
-                    '日本語で4-6-4の音律の短詩を作成してください。季語を含めて改行で3行に分けて出力してください。'
+                    '以下の例のように、5-7-7の音律の短詩を1つだけ作成してください。季語を含めて3行で出力し、余計な説明や挨拶は含めないでください。\n\n例：\n朝露が\n草原に光って\n美しく輝いている\n\n上記の形式で短詩のみを出力してください：',
+                    '以下の例のように、7-5-5の音律の短詩を1つだけ作成してください。季語を含めて3行で出力し、余計な説明や挨拶は含めないでください。\n\n例：\n青空に浮かぶ\n白い雲が\n流れゆく\n\n上記の形式で短詩のみを出力してください：',
+                    '以下の例のように、4-6-4の音律の短詩を1つだけ作成してください。季語を含めて3行で出力し、余計な説明や挨拶は含めないでください。\n\n例：\n夕日が\n山の向こうに\n沈んでく\n\n上記の形式で短詩のみを出力してください：'
                 ];
                 prompt = patterns[Math.floor(Math.random() * patterns.length)];
             }
         } else {
             // 日常ステージ
             if (shouldBe575) {
-                prompt = `日常生活や仕事で思わず口にしてしまいそうな、5-7-5の音律になっている一言を作成してください。俳句らしくない、普通の会話や独り言のような内容で、改行で3行に分けて出力してください。例：
-コーヒーが
-冷めてしまった
-また作ろう
+                prompt = `以下の例のように、日常生活や仕事で思わず口にしてしまいそうな5-7-5の音律の一言(必ず5-7-5の12文字で)を1つだけ作成してください。俳句らしくない、普通の会話や独り言のような内容で、余計な説明や挨拶は一切含めないでください。一言のみを出力してください。
 
-電車が
-遅れているよ
-困ったな`;
+例：ホットティー冷めてしまったまた作ろう
+上記の形式で日常の一言のみを出力してください。余計な説明や挨拶は一切含めないでください。必ず5-7-5の12文字でになっていなければ、再度作成してください。：`;
             } else {
                 const patterns = [
-                    '日常生活の一言で5-7-7の音律になるものを作成してください。改行で3行に分けて出力してください。',
-                    '日常生活の一言で7-5-5の音律になるものを作成してください。改行で3行に分けて出力してください。',
-                    '日常生活の一言で4-6-4の音律になるものを作成してください。改行で3行に分けて出力してください。',
-                    '日常生活の一言で6-8-6の音律になるものを作成してください。改行で3行に分けて出力してください。'
+                    '以下の例のように、日常生活の一言で5-7-7の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\n今日は忙しくて疲れた早く帰りたいな上記の形式で日常の一言のみを出力してください：',
+                    '以下の例のように、日常生活の一言で7-5-5の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\n電車が遅れてる困ったな急がなきゃ上記の形式で日常の一言のみを出力してください：',
+                    '以下の例のように、日常生活の一言で4-6-4の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\n雨だ傘を忘れたどうしよう上記の形式で日常の一言のみを出力してください：',
+                    '以下の例のように、日常生活の一言で6-8-6の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\nお腹がすいた何か食べるものはないかな冷蔵庫を見よう上記の形式で日常の一言のみを出力してください：'
                 ];
                 prompt = patterns[Math.floor(Math.random() * patterns.length)];
             }
@@ -142,10 +145,10 @@ async function generateTextWithGemini() {
                     }]
                 }],
                 generationConfig: {
-                    temperature: 0.9,
-                    topK: 1,
-                    topP: 1,
-                    maxOutputTokens: 2048,
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.8,
+                    maxOutputTokens: 100
                 },
                 safetySettings: [
                     {
@@ -181,7 +184,11 @@ async function generateTextWithGemini() {
             throw new Error('Invalid API response structure');
         }
         
-        const generatedText = data.candidates[0].content.parts[0].text.trim();
+        let generatedText = data.candidates[0].content.parts[0].text.trim();
+        
+        // 余計な返答を除去する処理
+        generatedText = cleanGeneratedText(generatedText);
+        
         const is575 = check575(generatedText);
         
         console.log('Generated text:', generatedText);
@@ -199,15 +206,62 @@ async function generateTextWithGemini() {
     }
 }
 
+// 生成されたテキストから余計な返答を除去
+function cleanGeneratedText(text) {
+    // 不要な前置きや返答を除去
+    const unwantedPhrases = [
+        '承知しました',
+        'わかりました',
+        '了解しました',
+        'かしこまりました',
+        '以下のように',
+        '以下の通り',
+        'こちらです',
+        'どうぞ',
+        '：',
+        '。',
+        'です',
+        'ます',
+        '例：',
+        '答え：',
+        '回答：'
+    ];
+    
+    let cleanedText = text;
+    
+    // 不要なフレーズを除去
+    unwantedPhrases.forEach(phrase => {
+        cleanedText = cleanedText.replace(new RegExp(phrase, 'g'), '');
+    });
+    
+    // 行ごとに分割して処理
+    let lines = cleanedText.split('\n').filter(line => line.trim() !== '');
+    
+    // 3行以外の場合は最初の3行を取得
+    if (lines.length > 3) {
+        lines = lines.slice(0, 3);
+    }
+    
+    // 各行をクリーンアップ
+    lines = lines.map(line => {
+        return line.trim()
+            .replace(/^[・\-\*\d+\.]\s*/, '') // 箇条書き記号を除去
+            .replace(/^「|」$/g, '') // 引用符を除去
+            .replace(/^\s*[\-:：]\s*/, '') // コロンやハイフンを除去
+    }).filter(line => line.length > 0);
+    
+    return lines.join('\n');
+}
+
 // フォールバック用のテキスト生成
 function generateTextFallback() {
     const haikuSamples = [
         // 俳句ステージ用 575の俳句サンプル
-        { text: "さくらさく\nかぜにまいおどる\nはなびらよ", is575: true, stage: 'haiku' },
-        { text: "あおぞらに\nしろいくもがながれ\nとりがなく", is575: true, stage: 'haiku' },
-        { text: "ゆめみてる\nよるのしずかなとき\nつきひかり", is575: true, stage: 'haiku' },
-        { text: "かぜふいて\nみどりのはっぱゆれ\nなつのひび", is575: true, stage: 'haiku' },
-        { text: "あめふって\nみずたまりにうつる\nそらのいろ", is575: true, stage: 'haiku' },
+        { text: "さくらさく\nかぜにおどるぞ\nはなびらよ", is575: true, stage: 'haiku' },
+        { text: "あおぞらに\nしらくもながるる\nとりがなく", is575: true, stage: 'haiku' },
+        { text: "ゆめみてる\nよるのしずかき\nつきひかり", is575: true, stage: 'haiku' },
+        { text: "かぜふいて\nみどりのはっぱ\nなつのひび", is575: true, stage: 'haiku' },
+        { text: "あめふって\nみずにうつるぜ\nそらのいろ", is575: true, stage: 'haiku' },
         
         // 俳句ステージ用 575でないサンプル
         { text: "ねこがいる\nにわのすみっこでねて\nひなたぼっこしてる", is575: false, stage: 'haiku' },
@@ -228,7 +282,8 @@ function generateTextFallback() {
         { text: "でんわが\nなっている\nだれだろう", is575: false, stage: 'daily' }
     ];
     
-    const shouldBe575 = Math.random() < 0.4;
+    const shouldBe575 = Math.random() < 0.6;
+    console.log('Using fallback generation, should be 575:', shouldBe575);
     const filteredSamples = haikuSamples.filter(sample => 
         sample.is575 === shouldBe575 && sample.stage === gameState.currentStage
     );
@@ -307,8 +362,16 @@ function answer(userAnswer) {
     
     if (isCorrect) {
         gameState.score++;
-        resultElement.textContent = '正解！';
-        resultElement.className = 'result correct';
+        
+        // 575で正解の場合は特別演出
+        if (gameState.currentAnswer === true) {
+            show575Animation();
+            resultElement.textContent = '575！正解！';
+            resultElement.className = 'result correct special-575';
+        } else {
+            resultElement.textContent = '正解！';
+            resultElement.className = 'result correct';
+        }
     } else {
         resultElement.textContent = `不正解... (正解: ${gameState.currentAnswer ? '575である' : '575でない'})`;
         resultElement.className = 'result incorrect';
@@ -319,6 +382,87 @@ function answer(userAnswer) {
     setTimeout(() => {
         nextQuestion();
     }, 1000);
+}
+
+// 575特別演出
+function show575Animation() {
+    // 575アニメーション要素を作成
+    const animation = document.createElement('div');
+    animation.className = 'animation-575';
+    animation.textContent = '5️⃣7️⃣5️⃣';
+    
+    // ゲームコンテナに追加
+    const gameContainer = document.querySelector('.game-container');
+    gameContainer.appendChild(animation);
+    
+    // 音効果を再生
+    play575Sound();
+    
+    // アニメーション後に要素を削除
+    setTimeout(() => {
+        if (animation.parentNode) {
+            animation.parentNode.removeChild(animation);
+        }
+    }, 2000);
+    
+    // 紙吹雪エフェクト
+    createConfetti();
+}
+
+// 575音効果（Web Audio APIを使用）
+function play575Sound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 3つの音を順番に再生（5-7-5のリズム）
+        const frequencies = [523.25, 659.25, 523.25]; // C5, E5, C5
+        const durations = [0.2, 0.3, 0.2]; // 5-7-5の長さを表現
+        
+        frequencies.forEach((freq, index) => {
+            setTimeout(() => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + durations[index]);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + durations[index]);
+            }, index * 150);
+        });
+    } catch (error) {
+        console.log('Audio not supported:', error);
+    }
+}
+
+// 紙吹雪エフェクト
+function createConfetti() {
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd'];
+    const gameContainer = document.querySelector('.game-container');
+    
+    for (let i = 0; i < 20; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        
+        gameContainer.appendChild(confetti);
+        
+        // アニメーション後に削除
+        setTimeout(() => {
+            if (confetti.parentNode) {
+                confetti.parentNode.removeChild(confetti);
+            }
+        }, 4000);
+    }
 }
 
 // 表示更新
