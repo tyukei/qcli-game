@@ -33,6 +33,65 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
         
+        .stage-buttons {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .stage-btn {
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            padding: 30px;
+            width: 250px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        
+        .stage-btn:hover {
+            border-color: #2196F3;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .stage-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .stage-desc {
+            font-size: 1em;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .stage-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f8ff;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .btn-back {
+            background: #666;
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.9em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
         .game-info {
             display: flex;
             justify-content: space-between;
@@ -163,7 +222,27 @@
     <div class="game-container">
         <h1 class="title">🎯 575判定ゲーム</h1>
         
-        <div id="gameArea">
+        <!-- ステージ選択画面 -->
+        <div id="stageSelect">
+            <h2 style="margin-bottom: 30px;">ステージを選択してください</h2>
+            <div class="stage-buttons">
+                <button class="btn stage-btn" onclick="selectStage('haiku')">
+                    <div class="stage-title">🌸 俳句ステージ</div>
+                    <div class="stage-desc">季語を含んだ美しい俳句の575判定</div>
+                </button>
+                <button class="btn stage-btn" onclick="selectStage('daily')">
+                    <div class="stage-title">💭 日常ステージ</div>
+                    <div class="stage-desc">思わず575になってしまった日常の一言</div>
+                </button>
+            </div>
+        </div>
+        
+        <div id="gameArea" style="display: none;">
+            <div class="stage-info">
+                <span id="currentStage">🌸 俳句ステージ</span>
+                <button class="btn btn-back" onclick="backToStageSelect()">ステージ選択に戻る</button>
+            </div>
+            
             <div class="game-info">
                 <div class="score">スコア: <span id="score">0</span></div>
                 <div class="time">残り時間: <span id="timeLeft">30</span>秒</div>
@@ -210,10 +289,11 @@
             timeLeft: 30,
             currentText: '',
             currentAnswer: false,
-            timer: null
+            timer: null,
+            currentStage: 'haiku'
         };
 
-        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent';
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
 
         // 音数カウント関数（ひらがな・カタカナ対応）
         function countMora(text) {
@@ -248,6 +328,35 @@
             return counts[0] === 5 && counts[1] === 7 && counts[2] === 5;
         }
 
+        // ステージ選択
+        function selectStage(stage) {
+            gameState.currentStage = stage;
+            document.getElementById('stageSelect').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'block';
+            
+            const stageInfo = document.getElementById('currentStage');
+            if (stage === 'haiku') {
+                stageInfo.textContent = '🌸 俳句ステージ';
+            } else {
+                stageInfo.textContent = '💭 日常ステージ';
+            }
+        }
+
+        // ステージ選択に戻る
+        function backToStageSelect() {
+            if (gameState.isPlaying) {
+                if (!confirm('ゲーム中です。ステージ選択に戻りますか？')) {
+                    return;
+                }
+                endGame();
+            }
+            
+            document.getElementById('stageSelect').style.display = 'block';
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('ending').style.display = 'none';
+            resetGame();
+        }
+
         // Gemini APIを使用してテキスト生成
         async function generateTextWithGemini() {
             if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
@@ -259,22 +368,41 @@
                 const shouldBe575 = Math.random() < 0.4;
                 
                 let prompt;
-                if (shouldBe575) {
-                    prompt = `日本語で5-7-5の音律の俳句を1つ作成してください。「承知しました。」「いかがでしょうか？」といった返答は不要です。
-季語を含めて、自然や日常の美しい瞬間を表現してください。改行で3行に分けて出力してください。例：
+                if (gameState.currentStage === 'haiku') {
+                    // 俳句ステージ
+                    if (shouldBe575) {
+                        prompt = `日本語で5-7-5の音律の俳句を1つ作成してください。季語を含めて、自然や日常の美しい瞬間を表現してください。改行で3行に分けて出力してください。例：
 桜散り
 風に舞い踊る
-花びらよ
-
-`;
+花びらよ`;
+                    } else {
+                        const patterns = [
+                            '日本語で5-7-7の音律の短詩を作成してください。季語を含めて改行で3行に分けて出力してください。',
+                            '日本語で7-5-5の音律の短詩を作成してください。季語を含めて改行で3行に分けて出力してください。',
+                            '日本語で4-6-4の音律の短詩を作成してください。季語を含めて改行で3行に分けて出力してください。'
+                        ];
+                        prompt = patterns[Math.floor(Math.random() * patterns.length)];
+                    }
                 } else {
-                    const patterns = [
-                        '日本語で5-7-7の音律の短詩を作成してください。最後に、不要な返答があれば削除し、ただ俳句のみを出力されているか確認してください。',
-                        '日本語で7-5-5の音律の短詩を作成してください。最後に、不要な返答があれば削除し、ただ俳句のみを出力されているか確認してください。',
-                        '日本語で4-6-4の音律の短詩を作成してください。最後に、不要な返答があれば削除し、ただ俳句のみを出力されているか確認してください。',
-                        '日本語で短い詩を2行で作成してください。各行は6-8音程度にしてください。最後に、不要な返答があれば削除し、ただ俳句のみを出力されているか確認してください。'
-                    ];
-                    prompt = patterns[Math.floor(Math.random() * patterns.length)];
+                    // 日常ステージ
+                    if (shouldBe575) {
+                        prompt = `日常生活や仕事で思わず口にしてしまいそうな、5-7-5の音律になっている一言を作成してください。俳句らしくない、普通の会話や独り言のような内容で、改行で3行に分けて出力してください。例：
+コーヒーが
+冷めてしまった
+また作ろう
+
+電車が
+遅れているよ
+困ったな`;
+                    } else {
+                        const patterns = [
+                            '日常生活の一言で5-7-7の音律になるものを作成してください。改行で3行に分けて出力してください。',
+                            '日常生活の一言で7-5-5の音律になるものを作成してください。改行で3行に分けて出力してください。',
+                            '日常生活の一言で4-6-4の音律になるものを作成してください。改行で3行に分けて出力してください。',
+                            '日常生活の一言で6-8-6の音律になるものを作成してください。改行で3行に分けて出力してください。'
+                        ];
+                        prompt = patterns[Math.floor(Math.random() * patterns.length)];
+                    }
                 }
 
                 console.log('Calling Gemini API...');
@@ -350,23 +478,36 @@
         // フォールバック用のテキスト生成
         function generateTextFallback() {
             const haikuSamples = [
-                // 575の俳句サンプル
-                { text: "さくらさく\nかぜにまいおどる\nはなびらよ", is575: true },
-                { text: "あおぞらに\nしろいくもがながれ\nとりがなく", is575: true },
-                { text: "ゆめみてる\nよるのしずかなとき\nつきひかり", is575: true },
-                { text: "かぜふいて\nみどりのはっぱゆれ\nなつのひび", is575: true },
-                { text: "あめふって\nみずたまりにうつる\nそらのいろ", is575: true },
+                // 俳句ステージ用 575の俳句サンプル
+                { text: "さくらさく\nかぜにまいおどる\nはなびらよ", is575: true, stage: 'haiku' },
+                { text: "あおぞらに\nしろいくもがながれ\nとりがなく", is575: true, stage: 'haiku' },
+                { text: "ゆめみてる\nよるのしずかなとき\nつきひかり", is575: true, stage: 'haiku' },
+                { text: "かぜふいて\nみどりのはっぱゆれ\nなつのひび", is575: true, stage: 'haiku' },
+                { text: "あめふって\nみずたまりにうつる\nそらのいろ", is575: true, stage: 'haiku' },
                 
-                // 575でないサンプル
-                { text: "ねこがいる\nにわのすみっこでねて\nひなたぼっこしてる", is575: false },
-                { text: "あかいはなが\nさいている\nきれいだな", is575: false },
-                { text: "おおきなき\nちいさなとり\nそらをとぶ", is575: false },
-                { text: "うみがみえる\nなみのおとがきこえて\nきもちいい", is575: false },
-                { text: "ほしがかがやく\nよるのそら\nきれい", is575: false }
+                // 俳句ステージ用 575でないサンプル
+                { text: "ねこがいる\nにわのすみっこでねて\nひなたぼっこしてる", is575: false, stage: 'haiku' },
+                { text: "あかいはなが\nさいている\nきれいだな", is575: false, stage: 'haiku' },
+                { text: "おおきなき\nちいさなとり\nそらをとぶ", is575: false, stage: 'haiku' },
+                
+                // 日常ステージ用 575のサンプル
+                { text: "コーヒーが\nつめたくなった\nまたいれよう", is575: true, stage: 'daily' },
+                { text: "でんしゃが\nおくれているよ\nこまったな", is575: true, stage: 'daily' },
+                { text: "しごとが\nおわらないよう\nがんばろう", is575: true, stage: 'daily' },
+                { text: "あさごはん\nたべるのわすれた\nおなかすく", is575: true, stage: 'daily' },
+                { text: "かぎどこだ\nさがしてもない\nこまったな", is575: true, stage: 'daily' },
+                
+                // 日常ステージ用 575でないサンプル
+                { text: "きょうはいそがしい\nしごとがおおい\nつかれた", is575: false, stage: 'daily' },
+                { text: "ひるごはん\nなにをたべようかな\nまよってしまう", is575: false, stage: 'daily' },
+                { text: "あめがふってる\nかさがない\nこまった", is575: false, stage: 'daily' },
+                { text: "でんわが\nなっている\nだれだろう", is575: false, stage: 'daily' }
             ];
             
             const shouldBe575 = Math.random() < 0.4;
-            const filteredSamples = haikuSamples.filter(sample => sample.is575 === shouldBe575);
+            const filteredSamples = haikuSamples.filter(sample => 
+                sample.is575 === shouldBe575 && sample.stage === gameState.currentStage
+            );
             const randomSample = filteredSamples[Math.floor(Math.random() * filteredSamples.length)];
             
             console.log('Using fallback generation:', randomSample);
@@ -505,7 +646,8 @@
                 timeLeft: 30,
                 currentText: '',
                 currentAnswer: false,
-                timer: null
+                timer: null,
+                currentStage: gameState.currentStage || 'haiku'
             };
             
             document.getElementById('startBtn').style.display = 'inline-block';
@@ -533,11 +675,14 @@
 
         // 初期表示更新
         updateDisplay();
+        
+        // 初期状態でステージ選択画面を表示
+        document.getElementById('stageSelect').style.display = 'block';
+        document.getElementById('gameArea').style.display = 'none';
     </script>
 
-    <!-- config.jsが存在する場合は読み込み -->
+    <!-- config.jsを動的に読み込み -->
     <script>
-        // config.jsを動的に読み込み
         const configScript = document.createElement('script');
         configScript.src = 'config.js';
         configScript.onload = function() {
