@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>575判定ゲーム</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .title {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .score { color: #4CAF50; }
+        .time { color: #FF5722; }
+        
+        .text-display {
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 1.5em;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .btn-yes {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-no {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .start-btn {
+            background: #2196F3;
+            color: white;
+            padding: 20px 40px;
+            font-size: 1.5em;
+        }
+        
+        .result {
+            margin: 20px 0;
+            font-size: 1.3em;
+            font-weight: bold;
+            min-height: 30px;
+        }
+        
+        .correct { color: #4CAF50; }
+        .incorrect { color: #f44336; }
+        
+        .ending {
+            display: none;
+            text-align: center;
+        }
+        
+        .ending h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        
+        .ending-excellent {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #333;
+        }
+        
+        .ending-good {
+            background: linear-gradient(45deg, #87CEEB, #4682B4);
+            color: white;
+        }
+        
+        .ending-normal {
+            background: linear-gradient(45deg, #98FB98, #32CD32);
+            color: #333;
+        }
+        
+        .ending-poor {
+            background: linear-gradient(45deg, #FFB6C1, #FF69B4);
+            color: #333;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="title">🎯 575判定ゲーム</h1>
+        
+        <div id="gameArea">
+            <div class="game-info">
+                <div class="score">スコア: <span id="score">0</span></div>
+                <div class="time">残り時間: <span id="timeLeft">30</span>秒</div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+            
+            <div class="text-display" id="textDisplay">
+                スタートボタンを押してゲームを開始してください
+            </div>
+            
+            <div class="result" id="result"></div>
+            
+            <div class="buttons">
+                <button class="btn start-btn" id="startBtn" onclick="startGame()">ゲーム開始</button>
+                <button class="btn btn-yes" id="yesBtn" onclick="answer(true)" disabled>575である (Y)</button>
+                <button class="btn btn-no" id="noBtn" onclick="answer(false)" disabled>575でない (N)</button>
+            </div>
+        </div>
+        
+        <div class="ending" id="ending">
+            <h2 id="endingTitle"></h2>
+            <p id="endingMessage"></p>
+            <p>最終スコア: <span id="finalScore"></span></p>
+            <button class="btn start-btn" onclick="resetGame()">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        // 設定管理
+        let GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE';
+        
+        // config.jsから設定を読み込む（存在する場合）
+        if (typeof window.CONFIG !== 'undefined' && window.CONFIG.GEMINI_API_KEY) {
+            GEMINI_API_KEY = window.CONFIG.GEMINI_API_KEY;
+        }
+
+        // ゲーム状態
+        let gameState = {
+            isPlaying: false,
+            score: 0,
+            timeLeft: 30,
+            currentText: '',
+            currentAnswer: false,
+            timer: null
+        };
+
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent';
+
+        // 音数カウント関数（ひらがな・カタカナ対応）
+        function countMora(text) {
+            const cleanText = text.replace(/[\n\r\s]/g, '');
+            const smallKana = /[ぁぃぅぇぉゃゅょっァィゥェォャュョッ]/g;
+            
+            let count = 0;
+            for (let i = 0; i < cleanText.length; i++) {
+                const char = cleanText[i];
+                
+                if (smallKana.test(char)) {
+                    continue;
+                }
+                
+                if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(char)) {
+                    count++;
+                }
+            }
+            
+            return count;
+        }
+
+        // 575判定関数
+        function check575(text) {
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length !== 3) {
+                return false;
+            }
+            
+            const counts = lines.map(line => countMora(line.trim()));
+            return counts[0] === 5 && counts[1] === 7 && counts[2] === 5;
+        }
+
+        // Gemini APIを使用してテキスト生成
+        async function generateTextWithGemini() {
+            if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+                console.log('API key not configured, using fallback');
+                return generateTextFallback();
+            }
+
+            try {
+                const shouldBe575 = Math.random() < 0.4;
+                
+                let prompt;
+                if (shouldBe575) {
+                    prompt = `日本語で5-7-5の音律の俳句を1つ作成してください。季語を含めて、自然や日常の美しい瞬間を表現してください。改行で3行に分けて出力してください。例：
+桜散り
+風に舞い踊る
+花びらよ`;
+                } else {
+                    const patterns = [
+                        '日本語で5-7-7の音律の短詩を作成してください。改行で3行に分けて出力してください。',
+                        '日本語で7-5-5の音律の短詩を作成してください。改行で3行に分けて出力してください。',
+                        '日本語で4-6-4の音律の短詩を作成してください。改行で3行に分けて出力してください。',
+                        '日本語で短い詩を2行で作成してください。各行は6-8音程度にしてください。'
+                    ];
+                    prompt = patterns[Math.floor(Math.random() * patterns.length)];
+                }
+
+                console.log('Calling Gemini API...');
+                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.9,
+                            topK: 1,
+                            topP: 1,
+                            maxOutputTokens: 2048,
+                        },
+                        safetySettings: [
+                            {
+                                category: "HARM_CATEGORY_HARASSMENT",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            },
+                            {
+                                category: "HARM_CATEGORY_HATE_SPEECH",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            },
+                            {
+                                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            },
+                            {
+                                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`API Error ${response.status}:`, errorText);
+                    throw new Error(`API Error: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+                    throw new Error('Invalid API response structure');
+                }
+                
+                const generatedText = data.candidates[0].content.parts[0].text.trim();
+                const is575 = check575(generatedText);
+                
+                console.log('Generated text:', generatedText);
+                console.log('Is 575:', is575);
+                
+                return {
+                    text: generatedText,
+                    is575: is575
+                };
+
+            } catch (error) {
+                console.error('Gemini API Error:', error);
+                console.log('Falling back to local generation');
+                return generateTextFallback();
+            }
+        }
+
+        // フォールバック用のテキスト生成
+        function generateTextFallback() {
+            const haikuSamples = [
+                // 575の俳句サンプル
+                { text: "さくらさく\nかぜにまいおどる\nはなびらよ", is575: true },
+                { text: "あおぞらに\nしろいくもがながれ\nとりがなく", is575: true },
+                { text: "ゆめみてる\nよるのしずかなとき\nつきひかり", is575: true },
+                { text: "かぜふいて\nみどりのはっぱゆれ\nなつのひび", is575: true },
+                { text: "あめふって\nみずたまりにうつる\nそらのいろ", is575: true },
+                
+                // 575でないサンプル
+                { text: "ねこがいる\nにわのすみっこでねて\nひなたぼっこしてる", is575: false },
+                { text: "あかいはなが\nさいている\nきれいだな", is575: false },
+                { text: "おおきなき\nちいさなとり\nそらをとぶ", is575: false },
+                { text: "うみがみえる\nなみのおとがきこえて\nきもちいい", is575: false },
+                { text: "ほしがかがやく\nよるのそら\nきれい", is575: false }
+            ];
+            
+            const shouldBe575 = Math.random() < 0.4;
+            const filteredSamples = haikuSamples.filter(sample => sample.is575 === shouldBe575);
+            const randomSample = filteredSamples[Math.floor(Math.random() * filteredSamples.length)];
+            
+            console.log('Using fallback generation:', randomSample);
+            return randomSample;
+        }
+
+        // ゲーム開始
+        function startGame() {
+            gameState.isPlaying = true;
+            gameState.score = 0;
+            gameState.timeLeft = 30;
+            
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('yesBtn').disabled = false;
+            document.getElementById('noBtn').disabled = false;
+            document.getElementById('ending').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'block';
+            
+            updateDisplay();
+            nextQuestion();
+            startTimer();
+        }
+
+        // タイマー開始
+        function startTimer() {
+            gameState.timer = setInterval(() => {
+                gameState.timeLeft--;
+                updateDisplay();
+                
+                if (gameState.timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // 次の問題
+        function nextQuestion() {
+            if (!gameState.isPlaying) return;
+            
+            document.getElementById('textDisplay').innerHTML = '生成中...';
+            document.getElementById('yesBtn').disabled = true;
+            document.getElementById('noBtn').disabled = true;
+            
+            generateTextWithGemini().then(generated => {
+                if (!gameState.isPlaying) return;
+                
+                gameState.currentText = generated.text;
+                gameState.currentAnswer = generated.is575;
+                
+                document.getElementById('textDisplay').innerHTML = gameState.currentText.replace(/\n/g, '<br>');
+                document.getElementById('result').textContent = '';
+                document.getElementById('yesBtn').disabled = false;
+                document.getElementById('noBtn').disabled = false;
+            }).catch(error => {
+                console.error('Text generation error:', error);
+                const generated = generateTextFallback();
+                gameState.currentText = generated.text;
+                gameState.currentAnswer = generated.is575;
+                
+                document.getElementById('textDisplay').innerHTML = gameState.currentText.replace(/\n/g, '<br>');
+                document.getElementById('result').textContent = '';
+                document.getElementById('yesBtn').disabled = false;
+                document.getElementById('noBtn').disabled = false;
+            });
+        }
+
+        // 回答処理
+        function answer(userAnswer) {
+            if (!gameState.isPlaying) return;
+            
+            const isCorrect = userAnswer === gameState.currentAnswer;
+            const resultElement = document.getElementById('result');
+            
+            if (isCorrect) {
+                gameState.score++;
+                resultElement.textContent = '正解！';
+                resultElement.className = 'result correct';
+            } else {
+                resultElement.textContent = `不正解... (正解: ${gameState.currentAnswer ? '575である' : '575でない'})`;
+                resultElement.className = 'result incorrect';
+            }
+            
+            updateDisplay();
+            
+            setTimeout(() => {
+                nextQuestion();
+            }, 1000);
+        }
+
+        // 表示更新
+        function updateDisplay() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('timeLeft').textContent = gameState.timeLeft;
+            
+            const progressPercent = ((30 - gameState.timeLeft) / 30) * 100;
+            document.getElementById('progressBar').style.width = progressPercent + '%';
+        }
+
+        // ゲーム終了
+        function endGame() {
+            gameState.isPlaying = false;
+            clearInterval(gameState.timer);
+            
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('ending').style.display = 'block';
+            document.getElementById('finalScore').textContent = gameState.score;
+            
+            const endingContainer = document.getElementById('ending');
+            const endingTitle = document.getElementById('endingTitle');
+            const endingMessage = document.getElementById('endingMessage');
+            
+            if (gameState.score >= 12) {
+                endingContainer.className = 'ending ending-excellent';
+                endingTitle.textContent = '🏆 俳句マスター！';
+                endingMessage.textContent = '素晴らしい！あなたは真の俳句の達人です。575の感覚が完璧に身についていますね！';
+            } else if (gameState.score >= 9) {
+                endingContainer.className = 'ending ending-good';
+                endingTitle.textContent = '🌟 俳句上級者！';
+                endingMessage.textContent = 'とても良い成績です！俳句の基本をしっかり理解していますね。';
+            } else if (gameState.score >= 6) {
+                endingContainer.className = 'ending ending-normal';
+                endingTitle.textContent = '📚 俳句学習者';
+                endingMessage.textContent = '良い調子です！もう少し練習すれば、さらに上達しそうですね。';
+            } else {
+                endingContainer.className = 'ending ending-poor';
+                endingTitle.textContent = '🌱 俳句初心者';
+                endingMessage.textContent = '俳句は奥が深いものです。575のリズムを意識して、また挑戦してみてください！';
+            }
+        }
+
+        // ゲームリセット
+        function resetGame() {
+            gameState = {
+                isPlaying: false,
+                score: 0,
+                timeLeft: 30,
+                currentText: '',
+                currentAnswer: false,
+                timer: null
+            };
+            
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('yesBtn').disabled = true;
+            document.getElementById('noBtn').disabled = true;
+            document.getElementById('textDisplay').textContent = 'スタートボタンを押してゲームを開始してください';
+            document.getElementById('result').textContent = '';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('ending').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'block';
+            
+            updateDisplay();
+        }
+
+        // キーボードショートカット
+        document.addEventListener('keydown', (event) => {
+            if (!gameState.isPlaying) return;
+            
+            if (event.key === 'y' || event.key === 'Y') {
+                answer(true);
+            } else if (event.key === 'n' || event.key === 'N') {
+                answer(false);
+            }
+        });
+
+        // 初期表示更新
+        updateDisplay();
+    </script>
+
+    <!-- config.jsが存在する場合は読み込み -->
+    <script>
+        // config.jsを動的に読み込み
+        const configScript = document.createElement('script');
+        configScript.src = 'config.js';
+        configScript.onload = function() {
+            if (typeof window.CONFIG !== 'undefined' && window.CONFIG.GEMINI_API_KEY) {
+                GEMINI_API_KEY = window.CONFIG.GEMINI_API_KEY;
+                console.log('config.js loaded successfully');
+            }
+        };
+        configScript.onerror = function() {
+            console.log('config.js not found, using default configuration');
+        };
+        document.head.appendChild(configScript);
+    </script>
+</body>
+</html>
