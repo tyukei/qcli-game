@@ -36,21 +36,17 @@ function countMora(text) {
             count++;
         }
     }
-    console.log(`Counted mora in "${text}": ${count}`);
     
     return count;
 }
 
 // 575判定関数
 function check575(text) {
-    const lines = text.split('\n').filter(line => line.trim() !== '');
+    // 全体の文字数（モーラ数）をカウント
+    const totalMora = countMora(text);
     
-    if (lines.length !== 3) {
-        return false;
-    }
-    
-    const counts = lines.map(line => countMora(line.trim()));
-    return counts[0] === 5 && counts[1] === 7 && counts[2] === 5;
+    // 17文字（モーラ）であれば575と判定
+    return totalMora === 17;
 }
 
 // ステージ選択
@@ -83,7 +79,6 @@ function backToStageSelect() {
 }
 
 // Gemini APIを使用してテキスト生成
-// Gemini APIを使用してテキスト生成
 async function generateTextWithGemini() {
     if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
         console.log('API key not configured, using fallback');
@@ -98,35 +93,106 @@ async function generateTextWithGemini() {
         if (gameState.currentStage === 'haiku') {
             // 俳句ステージ
             if (shouldBe575) {
-                prompt = `以下の例のように、5-7-5の音律の俳句を1つだけ作成してください。季語を含めて、自然や日常の美しい瞬間を表現してください。3行で出力し、余計な説明や挨拶は一切含めないでください。俳句のみを出力してください。
+                prompt = `あなたは俳句の専門家です。合計17文字（モーラ）になる俳句または短詩を1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "俳句または短詩の内容（改行を含めても可）",
+  "is575": true
+}
 
-例：
-桜散り
-風に舞い踊る
-花びらよ
-
-上記の形式で俳句のみを出力してください。余計な説明や挨拶は一切含めないでください：`;
+季語を含めて、自然や日常の美しい瞬間を表現してください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+句読点は入れないでください。`;
             } else {
                 const patterns = [
-                    '以下の例のように、5-7-7の音律の短詩を1つだけ作成してください。季語を含めて3行で出力し、余計な説明や挨拶は含めないでください。\n\n例：\n朝露が\n草原に光って\n美しく輝いている\n\n上記の形式で短詩のみを出力してください：',
-                    '以下の例のように、7-5-5の音律の短詩を1つだけ作成してください。季語を含めて3行で出力し、余計な説明や挨拶は含めないでください。\n\n例：\n青空に浮かぶ\n白い雲が\n流れゆく\n\n上記の形式で短詩のみを出力してください：',
-                    '以下の例のように、4-6-4の音律の短詩を1つだけ作成してください。季語を含めて3行で出力し、余計な説明や挨拶は含めないでください。\n\n例：\n夕日が\n山の向こうに\n沈んでく\n\n上記の形式で短詩のみを出力してください：'
+                    `あなたは短詩の専門家です。合計16文字または18文字（モーラ）になる短詩を1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "短詩の内容（改行を含めても可）",
+  "is575": false
+}
+
+短詩は季語を含めて、自然や日常の美しい瞬間を表現してください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+句読点は入れないでください。`,
+                    `あなたは短詩の専門家です。合計15文字または19文字（モーラ）になる短詩を1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "短詩の内容（改行を含めても可）",
+  "is575": false
+}
+
+短詩は季語を含めて、自然や日常の美しい瞬間を表現してください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+句読点は入れないでください。`,
+                    `あなたは短詩の専門家です。合計14文字（モーラ）になる短詩を1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "短詩の内容（改行を含めても可）",
+  "is575": false
+}
+
+短詩は季語を含めて、自然や日常の美しい瞬間を表現してください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+句読点は入れないでください。`
                 ];
                 prompt = patterns[Math.floor(Math.random() * patterns.length)];
             }
         } else {
             // 日常ステージ
             if (shouldBe575) {
-                prompt = `以下の例のように、日常生活や仕事で思わず口にしてしまいそうな5-7-5の音律の一言(必ず5-7-5の12文字で)を1つだけ作成してください。俳句らしくない、普通の会話や独り言のような内容で、余計な説明や挨拶は一切含めないでください。一言のみを出力してください。
+                prompt = `あなたは日常会話の専門家です。日常生活や仕事で思わず口にしてしまいそうな、合計17文字（モーラ）になる一言を1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "日常の一言",
+  "is575": true
+}
 
-例：ホットティー冷めてしまったまた作ろう
-上記の形式で日常の一言のみを出力してください。余計な説明や挨拶は一切含めないでください。必ず5-7-5の12文字でになっていなければ、再度作成してください。：`;
+俳句らしくない、普通の会話や独り言のような内容にしてください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+「ー」や句読点は入れないでください。`;
             } else {
                 const patterns = [
-                    '以下の例のように、日常生活の一言で5-7-7の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\n今日は忙しくて疲れた早く帰りたいな上記の形式で日常の一言のみを出力してください：',
-                    '以下の例のように、日常生活の一言で7-5-5の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\n電車が遅れてる困ったな急がなきゃ上記の形式で日常の一言のみを出力してください：',
-                    '以下の例のように、日常生活の一言で4-6-4の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\n雨だ傘を忘れたどうしよう上記の形式で日常の一言のみを出力してください：',
-                    '以下の例のように、日常生活の一言で6-8-6の音律になるものを1つだけ作成してください。余計な説明や挨拶は含めないでください。\n\n例：\nお腹がすいた何か食べるものはないかな冷蔵庫を見よう上記の形式で日常の一言のみを出力してください：'
+                    `あなたは日常会話の専門家です。日常生活の一言で合計16文字または18文字（モーラ）になるものを1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "日常の一言",
+  "is575": false
+}
+
+普通の会話や独り言のような内容にしてください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+「ー」や句読点は入れないでください`,
+                    `あなたは日常会話の専門家です。日常生活の一言で合計15文字または19文字（モーラ）になるものを1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "日常の一言",
+  "is575": false
+}
+
+普通の会話や独り言のような内容にしてください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+「ー」や句読点は入れないでください`,
+                    `あなたは日常会話の専門家です。日常生活の一言で合計14文字（モーラ）になるものを1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "日常の一言",
+  "is575": false
+}
+
+普通の会話や独り言のような内容にしてください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+「ー」や句読点は入れないでください`,
+                    `あなたは日常会話の専門家です。日常生活の一言で合計20文字（モーラ）になるものを1つだけ作成し、以下のJSON形式で返してください。
+{
+  "answer": "日常の一言",
+  "is575": false
+}
+
+普通の会話や独り言のような内容にしてください。
+回答は必ずJSON形式のみで、余計な説明は含めないでください。
+漢字は使わず、ひらがなのみで作成してください。
+「ー」や句読点は入れないでください`
                 ];
                 prompt = patterns[Math.floor(Math.random() * patterns.length)];
             }
@@ -186,23 +252,56 @@ async function generateTextWithGemini() {
         
         let generatedText = data.candidates[0].content.parts[0].text.trim();
         
-        // 余計な返答を除去する処理
-        generatedText = cleanGeneratedText(generatedText);
-        
-        const is575 = check575(generatedText);
-        
-        console.log('Generated text:', generatedText);
-        console.log('Is 575:', is575);
-        
-        return {
-            text: generatedText,
-            is575: is575
-        };
+        try {
+            // JSONとしてパース
+            const jsonResponse = extractJSON(generatedText);
+            console.log('Parsed JSON:', jsonResponse);
+            
+            if (jsonResponse && jsonResponse.answer && typeof jsonResponse.is575 === 'boolean') {
+                // APIからの判定を使用
+                return {
+                    text: jsonResponse.answer,
+                    is575: jsonResponse.is575
+                };
+            } else {
+                throw new Error('Invalid JSON structure');
+            }
+        } catch (jsonError) {
+            console.error('JSON parsing error:', jsonError);
+            
+            // JSONパースに失敗した場合は、テキストをクリーンアップして自前で判定
+            generatedText = cleanGeneratedText(generatedText);
+            const is575 = check575(generatedText);
+            
+            console.log('Fallback to text cleaning. Generated text:', generatedText);
+            console.log('Is 575:', is575);
+            
+            return {
+                text: generatedText,
+                is575: is575
+            };
+        }
 
     } catch (error) {
         console.error('Gemini API Error:', error);
         console.log('Falling back to local generation');
         return generateTextFallback();
+    }
+}
+
+// JSONを抽出する関数
+function extractJSON(text) {
+    try {
+        // テキスト内のJSON部分を抽出するための正規表現
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        // 直接JSONとしてパース
+        return JSON.parse(text);
+    } catch (e) {
+        console.error('JSON extraction failed:', e);
+        throw e;
     }
 }
 
@@ -269,7 +368,7 @@ function generateTextFallback() {
         { text: "おおきなき\nちいさなとり\nそらをとぶ", is575: false, stage: 'haiku' },
         
         // 日常ステージ用 575のサンプル
-        { text: "コーヒーが\nつめたくなった\nまたいれよう", is575: true, stage: 'daily' },
+        { text: "こーひーが\nつめたくなった\nまたいれよう", is575: true, stage: 'daily' },
         { text: "でんしゃが\nおくれているよ\nこまったな", is575: true, stage: 'daily' },
         { text: "しごとが\nおわらないよう\nがんばろう", is575: true, stage: 'daily' },
         { text: "あさごはん\nたべるのわすれた\nおなかすく", is575: true, stage: 'daily' },
@@ -282,8 +381,7 @@ function generateTextFallback() {
         { text: "でんわが\nなっている\nだれだろう", is575: false, stage: 'daily' }
     ];
     
-    const shouldBe575 = Math.random() < 0.6;
-    console.log('Using fallback generation, should be 575:', shouldBe575);
+    const shouldBe575 = Math.random() < 0.4;
     const filteredSamples = haikuSamples.filter(sample => 
         sample.is575 === shouldBe575 && sample.stage === gameState.currentStage
     );

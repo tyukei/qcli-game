@@ -13,6 +13,7 @@
         <!-- ステージ選択画面 -->
         <div id="stageSelect">
             <h2 style="margin-bottom: 30px;">ステージを選択してください</h2>
+            <p class="note">※ 注意: 漢字の読み方によっては、厳密な音数にならない場合があります。<br>合計17文字（モーラ）であれば「575である」と判定します。</p>
             <div class="stage-buttons">
                 <button class="btn stage-btn" onclick="selectStage('haiku')">
                     <div class="stage-title">🌸 俳句ステージ</div>
@@ -30,6 +31,8 @@
                 <span id="currentStage">🌸 俳句ステージ</span>
                 <button class="btn btn-back" onclick="backToStageSelect()">ステージ選択に戻る</button>
             </div>
+            
+            <p class="note">※ 注意: 漢字の読み方によっては、厳密な音数にならない場合があります。<br>合計17文字（モーラ）であれば「575である」と判定します。</p>
             
             <div class="game-info">
                 <div class="score">スコア: <span id="score">0</span></div>
